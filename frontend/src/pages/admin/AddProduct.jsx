@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react'
 import { ShopContext } from "../../context/ShopContext";
 import { useParams, useNavigate } from "react-router-dom";
+import { assets } from "../../assets/frontend_assets/assets";
 const AddProduct = () => {
   const { productId } = useParams()
   const { products, addProduct, updateProduct } = useContext(ShopContext)
