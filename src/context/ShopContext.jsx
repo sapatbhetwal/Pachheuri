@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect } from 'react'
+import React, { createContext, useState, useEffect, useCallback } from 'react'
 import { products as initialProducts } from '../assets/frontend_assets/assets'
 import {
   fetchProductsFromDB,
@@ -11,37 +11,58 @@ import {
   getLocalData,
   setLocalData,
 } from '../utils/db'
+import { api, getStoredToken, setStoredToken } from '../utils/api'
 
 export const ShopContext = createContext()
 
-const ShopContextProvider = ({ children }) => {
-  const currency = '$'
-  const delivery_fee = 10
+// Helper to normalize any legacy cached price in IndexedDB to realistic Nepal Rupee (NPR) prices
+const normalizePrice = (p) => {
+  let price = Number(p.price) || 1200
+  if (price < 500) {
+    if (price === 200) price = 2500
+    else if (price === 100) price = 1500
+    else if (price === 220) price = 2800
+    else if (price === 110) price = 1650
+    else price = Math.round((price * 12.5) / 50) * 50
+  }
+  return { ...p, price }
+}
 
-  // State with initial fallback
-  const [products, setProducts] = useState(initialProducts)
+const ShopContextProvider = ({ children }) => {
+  const currency = 'Rs. '
+  const delivery_fee = 100 // Standard Kathmandu Valley delivery fee: Rs. 100, Outside Valley: Rs. 150
+
+  const getDeliveryFee = useCallback((district = '') => {
+    const valleyDistricts = ['kathmandu', 'lalitpur', 'bhaktapur']
+    const isValley = valleyDistricts.includes(district.toLowerCase().trim())
+    return isValley ? 100 : 150
+  }, [])
+
+  const formatPrice = useCallback((amount) => {
+    const num = Number(amount) || 0
+    return `Rs. ${num.toLocaleString('en-IN')}`
+  }, [])
+
+  // State
+  const [products, setProducts] = useState(() => initialProducts.map(normalizePrice))
   const [isDbLoaded, setIsDbLoaded] = useState(false)
   const [cartItems, setCartItems] = useState(() => getLocalData('pachheuri_cart', {}))
   const [search, setSearch] = useState('')
   const [showSearch, setShowSearch] = useState(false)
   const [user, setUser] = useState(() => getLocalData('pachheuri_user', null))
+  const [profile, setProfile] = useState(null)
   const [orders, setOrders] = useState([])
   const [wishlist, setWishlist] = useState(() => getLocalData('pachheuri_wishlist', []))
+  const [authLoading, setAuthLoading] = useState(true)
 
-  // Load products and orders from persistent IndexedDB on mount
+  // Load products from persistent IndexedDB
   useEffect(() => {
     let isMounted = true
 
     fetchProductsFromDB().then((data) => {
       if (isMounted && data && data.length > 0) {
-        setProducts(data)
+        setProducts(data.map(normalizePrice))
         setIsDbLoaded(true)
-      }
-    })
-
-    fetchOrdersFromDB().then((data) => {
-      if (isMounted && data) {
-        setOrders(data)
       }
     })
 
@@ -50,10 +71,109 @@ const ShopContextProvider = ({ children }) => {
     }
   }, [])
 
-  // Sync cart to local storage
+  // Verify and restore authenticated session on mount
+  useEffect(() => {
+    let isMounted = true
+    const token = getStoredToken()
+
+    if (!token) {
+      setAuthLoading(false)
+      return
+    }
+
+    api
+      .getMe()
+      .then((res) => {
+        if (isMounted && res && res.success && res.user) {
+          setUser(res.user)
+          setProfile(res.user)
+          setLocalData('pachheuri_user', res.user)
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setStoredToken(null)
+          setUser(null)
+          setProfile(null)
+          setLocalData('pachheuri_user', null)
+        }
+      })
+      .finally(() => {
+        if (isMounted) setAuthLoading(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  // Synchronize user-specific data (cart, wishlist, orders) whenever the authenticated user changes
+  const loadUserData = useCallback(async (currentUser) => {
+    if (!currentUser) {
+      // Unauthenticated / Guest state
+      setOrders([])
+      return
+    }
+
+    try {
+      // Admin sees all orders; regular user sees only their own orders
+      if (currentUser.role === 'admin') {
+        const res = await api.getAdminOrders().catch(() => null)
+        if (res && res.orders) {
+          setOrders(res.orders)
+        } else {
+          const localOrders = await fetchOrdersFromDB()
+          setOrders(localOrders || [])
+        }
+      } else {
+        const [ordersRes, cartRes, wishRes, profRes] = await Promise.allSettled([
+          api.getUserOrders(),
+          api.getCart(),
+          api.getWishlist(),
+          api.getProfile(),
+        ])
+
+        if (ordersRes.status === 'fulfilled' && ordersRes.value.orders) {
+          setOrders(ordersRes.value.orders)
+        } else {
+          const localOrders = await fetchOrdersFromDB()
+          const myLocalOrders = (localOrders || []).filter(
+            (o) => o.userId === currentUser.id || o.userEmail === currentUser.email
+          )
+          setOrders(myLocalOrders)
+        }
+
+        if (cartRes.status === 'fulfilled' && cartRes.value.cart) {
+          setCartItems(cartRes.value.cart)
+        }
+
+        if (wishRes.status === 'fulfilled' && wishRes.value.wishlist) {
+          setWishlist(wishRes.value.wishlist)
+        }
+
+        if (profRes.status === 'fulfilled' && profRes.value.profile) {
+          setProfile(profRes.value.profile)
+        }
+      }
+    } catch (err) {
+      console.error('Error loading user-specific data:', err)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadUserData(user)
+  }, [user, loadUserData])
+
+  // Sync cart to local storage and server
   useEffect(() => {
     setLocalData('pachheuri_cart', cartItems)
-  }, [cartItems])
+    if (user && user.role !== 'admin') {
+      const timer = setTimeout(() => {
+        api.updateCart(cartItems).catch(() => {})
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [cartItems, user])
 
   // Sync user to local storage
   useEffect(() => {
@@ -110,49 +230,108 @@ const ShopContextProvider = ({ children }) => {
     return amount
   }
 
-  const toggleWishlist = (itemId) => {
+  const toggleWishlist = async (itemId) => {
     setWishlist((prev) => (prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]))
+    if (user) {
+      try {
+        const res = await api.toggleWishlist(itemId)
+        if (res && res.wishlist) setWishlist(res.wishlist)
+      } catch (err) {
+        console.error('Failed to sync wishlist with server:', err)
+      }
+    }
   }
 
-  const placeOrder = async (orderData) => {
-    const newOrder = {
-      id: 'ORD' + Date.now(),
-      date: new Date().toISOString(),
+  // --- Order & Payment Functions ---
+  const placeOrder = async ({ deliveryInfo, method, paymentDetails }) => {
+    const total = getCartAmount() + delivery_fee
+
+    // Call backend endpoint to validate payment details and record order
+    const result = await api.createOrder({
+      deliveryInfo,
       items: { ...cartItems },
-      total: getCartAmount() + delivery_fee,
-      status: 'Processing',
-      ...orderData,
+      method,
+      paymentDetails,
+      total,
+    })
+
+    if (result && result.success && result.order) {
+      setOrders((prev) => [result.order, ...prev])
+      setCartItems({})
+      await saveOrderToDB(result.order)
+      return result.order
     }
-    setOrders((prev) => [newOrder, ...prev])
-    setCartItems({})
-    await saveOrderToDB(newOrder)
-    return newOrder.id
+
+    throw new Error(result?.error || 'Failed to place order')
   }
 
   const updateOrderStatus = async (orderId, status) => {
     setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status } : o)))
+    await api.updateAdminOrderStatus(orderId, status).catch(() => {})
     await updateOrderStatusInDB(orderId, status)
   }
 
   // --- Auth Functions ---
-  const login = (email, _password) => {
-    const newUser = { email, name: email.split('@')[0], role: 'user' }
-    setUser(newUser)
-    return true
-  }
-
-  const adminLogin = (email, password) => {
-    if (email === 'admin@123.com' && password === 'admin123') {
-      const adminUser = { email, name: 'Admin', role: 'admin' }
-      setUser(adminUser)
-      return true
+  const register = async (name, email, password) => {
+    const res = await api.register({ name, email, password })
+    if (res.success && res.user) {
+      setUser(res.user)
+      setProfile(res.user)
+      setCartItems({})
+      setWishlist([])
+      return res.user
     }
-    return false
+    throw new Error(res.error || 'Registration failed')
   }
 
-  const logout = () => {
+  const login = async (email, password) => {
+    const res = await api.login({ email, password })
+    if (res.success && res.user) {
+      setUser(res.user)
+      setProfile(res.user)
+      return res.user
+    }
+    throw new Error(res.error || 'Invalid credentials')
+  }
+
+  const adminLogin = async (email, password) => {
+    const res = await api.adminLogin({ email, password })
+    if (res.success && res.user) {
+      setUser(res.user)
+      setProfile(res.user)
+      return res.user
+    }
+    throw new Error(res.error || 'Invalid admin credentials')
+  }
+
+  const logout = async () => {
+    await api.logout().catch(() => {})
     setUser(null)
+    setProfile(null)
     setCartItems({})
+    setWishlist([])
+    setOrders([])
+    setLocalData('pachheuri_user', null)
+    setLocalData('pachheuri_cart', {})
+    setLocalData('pachheuri_wishlist', [])
+  }
+
+  const forgotPassword = async (email) => {
+    return await api.forgotPassword({ email })
+  }
+
+  const resetPassword = async (email, token, newPassword) => {
+    return await api.resetPassword({ email, token, newPassword })
+  }
+
+  const updateProfile = async (data) => {
+    const res = await api.updateProfile(data)
+    if (res.success && res.profile) {
+      setProfile(res.profile)
+      setUser((prev) => ({ ...prev, ...res.profile }))
+      return res.profile
+    }
+    throw new Error(res.error || 'Failed to update profile')
   }
 
   // --- Admin Product CRUD with Persistent DB ---
@@ -215,6 +394,8 @@ const ShopContextProvider = ({ children }) => {
     isDbLoaded,
     currency,
     delivery_fee,
+    getDeliveryFee,
+    formatPrice,
     cartItems,
     addToCart,
     updateQuantity,
@@ -225,9 +406,15 @@ const ShopContextProvider = ({ children }) => {
     showSearch,
     setShowSearch,
     user,
+    profile,
+    authLoading,
+    register,
     login,
     adminLogin,
     logout,
+    forgotPassword,
+    resetPassword,
+    updateProfile,
     orders,
     placeOrder,
     updateOrderStatus,

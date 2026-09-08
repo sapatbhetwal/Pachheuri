@@ -75,7 +75,7 @@ const Cart = () => {
                 </div>
 
                 <div className="col-span-2 text-center hidden md:block">
-                  <p className="text-sm font-medium">{currency}{item.price}</p>
+                  <p className="text-sm font-medium">{currency}{(item.price || 0).toLocaleString('en-IN')}</p>
                 </div>
 
                 <div className="col-span-2 flex items-center justify-center">
@@ -87,7 +87,7 @@ const Cart = () => {
                 </div>
 
                 <div className="col-span-2 text-right hidden md:block">
-                  <p className="text-sm font-semibold">{currency}{item.price * item.quantity}</p>
+                  <p className="text-sm font-semibold">{currency}{((item.price || 0) * item.quantity).toLocaleString('en-IN')}</p>
                   <button onClick={() => updateQuantity(item._id, item.size, 0)} className="mt-1 hover:opacity-70">
                     <img src={assets.bin_icon} alt="Remove" className="w-4 h-4 ml-auto" />
                   </button>
@@ -109,11 +109,11 @@ const Cart = () => {
             <div className="space-y-3 mb-6">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Subtotal</span>
-                <span className="font-medium">{currency}{getCartAmount()}</span>
+                <span className="font-medium">{currency}{getCartAmount().toLocaleString('en-IN')}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Shipping</span>
-                <span className="font-medium">{currency}{delivery_fee}</span>
+                <span className="text-gray-500">Shipping (Nepal)</span>
+                <span className="font-medium">{currency}{delivery_fee.toLocaleString('en-IN')}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Tax</span>
@@ -123,8 +123,8 @@ const Cart = () => {
 
             <div className="border-t border-gray-200 pt-4 mb-6">
               <div className="flex justify-between">
-                <span className="font-medium">Total</span>
-                <span className="text-xl font-semibold">{currency}{getCartAmount() + delivery_fee}</span>
+                <span className="font-medium">Total (NPR)</span>
+                <span className="text-xl font-semibold">{currency}{(getCartAmount() + delivery_fee).toLocaleString('en-IN')}</span>
               </div>
             </div>
 

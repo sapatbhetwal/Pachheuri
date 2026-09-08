@@ -402,7 +402,7 @@ const AddProduct = () => {
           <div>
 
             <label className="block text-sm font-semibold text-neutral-900 mb-1.5">
-              Price ($)
+              Price (Rs. / NPR)
             </label>
 
             <input
@@ -415,7 +415,7 @@ const AddProduct = () => {
                 })
               }
               className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-neutral-900 focus:bg-white transition-all text-sm"
-              placeholder="100"
+              placeholder="2500"
               required
             />
 
@@ -690,7 +690,7 @@ const AddProduct = () => {
           <div className="mb-8">
 
             <label className="block text-sm font-semibold text-neutral-900 mb-1.5">
-              Sale Price ($)
+              Sale Price (Rs. / NPR)
             </label>
 
             <input

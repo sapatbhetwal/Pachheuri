@@ -14,6 +14,8 @@ import ForgotPassword from './pages/ForgotPassword.jsx'
 import About from './pages/About.jsx'
 import Contact from './pages/Contact.jsx'
 import Orders from './pages/Orders.jsx'
+import Profile from './pages/Profile.jsx'
+import ResetPassword from './pages/ResetPassword.jsx'
 import AdminLayout from './pages/admin/AdminLayout.jsx'
 import Dashboard from './pages/admin/Dashboard.jsx'
 import ProductList from './pages/admin/ProductList.jsx'
@@ -39,9 +41,11 @@ const App = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/orders" element={<Orders />} />
+          <Route path="/profile" element={<Profile />} />
 
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminLayout />}>
