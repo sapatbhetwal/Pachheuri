@@ -28,7 +28,7 @@ const Navbar = () => {
       <div className="section-padding">
         <div className="flex items-center justify-between h-16 lg:h-20">
           <Link to="/" className="flex items-center gap-2">
-            <img src={assets.logo} alt="Forever" className="h-8 lg:h-10 object-contain" />
+            <img src={assets.logo} alt="Pachheuri" className="h-8 lg:h-10 object-contain" />
           </Link>
 
           <div className="hidden md:flex items-center gap-8">

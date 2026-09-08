@@ -36,20 +36,6 @@ const Login = () => {
     }
   }
 
-  // Quick fill helper for testing
-  const fillDemo = (role) => {
-    if (role === 'admin') {
-      setIsAdmin(true)
-      setEmail('admin@123.com')
-      setPassword('admin123')
-    } else {
-      setIsAdmin(false)
-      setEmail('demo@user.com')
-      setPassword('password123')
-    }
-    setError('')
-  }
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 px-4 pt-16 pb-12">
       <div className="w-full max-w-md">
@@ -61,27 +47,6 @@ const Login = () => {
             <p className="text-sm text-gray-400">
               {isAdmin ? 'Sign in to admin dashboard' : 'Sign in to your account'}
             </p>
-          </div>
-
-          {/* Quick Demo Credentials Bar */}
-          <div className="mb-6 p-3 bg-neutral-50 border border-gray-200 rounded-xl text-xs flex items-center justify-between">
-            <span className="text-gray-500 font-medium">Quick Demo:</span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => fillDemo('user')}
-                className="px-2.5 py-1 bg-white border border-gray-300 hover:border-neutral-900 rounded-md text-neutral-800 font-medium transition-colors"
-              >
-                Shopper
-              </button>
-              <button
-                type="button"
-                onClick={() => fillDemo('admin')}
-                className="px-2.5 py-1 bg-white border border-gray-300 hover:border-neutral-900 rounded-md text-neutral-800 font-medium transition-colors"
-              >
-                Admin
-              </button>
-            </div>
           </div>
 
           {successMessage && (
