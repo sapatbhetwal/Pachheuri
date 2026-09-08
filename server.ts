@@ -5,7 +5,7 @@ import crypto from 'crypto'
 import { createServer as createViteServer } from 'vite'
 import { readDB, writeDB, hashPassword, User, Order } from './server/db'
 
-const PORT = 3000
+const DEFAULT_PORT = 3000
 
 // Helper: Luhn algorithm check for credit cards
 function isValidLuhn(digits: string): boolean {
@@ -337,7 +337,6 @@ async function startServer() {
       message: 'Password reset instructions have been sent.',
       resetToken,
       resetUrl,
-      demoHint: `Click the reset link or visit: ${resetUrl}`,
     })
   })
 
@@ -892,7 +891,7 @@ async function startServer() {
 
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, ws: { port: 24679 } },
       appType: 'spa',
     })
     app.use(vite.middlewares)
@@ -905,9 +904,24 @@ async function startServer() {
     })
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Pachheuri full-stack server running on http://0.0.0.0:${PORT}`)
-  })
+  const requestedPort = Number(process.env.PORT) || DEFAULT_PORT
+  const listen = (port: number) => {
+    const server = app.listen(port, '0.0.0.0', () => {
+      console.log(`Pachheuri full-stack server running on http://0.0.0.0:${port}`)
+    })
+
+    server.on('error', (error: NodeJS.ErrnoException) => {
+      if (error.code !== 'EADDRINUSE') {
+        throw error
+      }
+
+      const fallbackPort = port + 1
+      console.warn(`Port ${port} is already in use; trying ${fallbackPort}.`)
+      listen(fallbackPort)
+    })
+  }
+
+  listen(requestedPort)
 }
 
 startServer()

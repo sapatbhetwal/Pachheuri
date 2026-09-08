@@ -60,7 +60,7 @@ const PlaceOrder = () => {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
-    phone: '',
+    phone: '+977 ',
     province: 'Bagmati Province',
     district: 'Kathmandu',
     municipality: 'Kathmandu Metropolitan City',
@@ -107,7 +107,7 @@ const PlaceOrder = () => {
         ...prev,
         fullName: prev.fullName || profile?.name || user.name || '',
         email: prev.email || user.email || '',
-        phone: prev.phone || profile?.phone || '',
+        phone: prev.phone.trim() !== '+977 ' ? prev.phone : profile?.phone ? (profile.phone.startsWith('+977') ? profile.phone : `+977 ${profile.phone}`) : prev.phone,
         province: profile?.province || prev.province,
         district: district,
         municipality: profile?.municipality || profile?.city || prev.municipality,
@@ -186,44 +186,6 @@ const PlaceOrder = () => {
     setCardData({ ...cardData, cvv: raw })
     if (fieldErrors.cvv) {
       setFieldErrors((prev) => ({ ...prev, cvv: null }))
-    }
-  }
-
-  // Quick fill test credentials for Nepal payment gateways
-  const handleFillTestPayment = (type) => {
-    setErrorBanner('')
-    setFieldErrors({})
-
-    if (type === 'esewa') {
-      setEsewaData({
-        esewaId: '9841234567',
-        mpin: '1234',
-      })
-    } else if (type === 'khalti') {
-      setKhaltiData({
-        khaltiNumber: '9801234567',
-        khaltiPin: '1234',
-      })
-    } else if (type === 'bank') {
-      setBankData({
-        bankName: 'Nabil Bank Ltd.',
-        senderAccount: '019010002847190',
-        referenceId: `FPAY-NP-${Math.floor(10000 + Math.random() * 90000)}`,
-      })
-    } else if (type === 'sct_card') {
-      setCardData({
-        cardHolder: formData.fullName || 'Aayush Shrestha',
-        cardNumber: '5081 2233 4455 6677',
-        expiryDate: '10/28',
-        cvv: '567',
-      })
-    } else if (type === 'visa_card') {
-      setCardData({
-        cardHolder: formData.fullName || 'Aayush Shrestha',
-        cardNumber: '4242 4242 4242 4242',
-        expiryDate: '12/28',
-        cvv: '123',
-      })
     }
   }
 
@@ -316,7 +278,7 @@ const PlaceOrder = () => {
       return
     }
     if (!isValidNepalPhone(formData.phone)) {
-      setErrorBanner('Please enter a valid Nepal phone number (e.g. 9841234567 or +977 98...)')
+      setErrorBanner('Please enter a valid Nepal phone number.')
       return
     }
     if (!formData.province) {
@@ -590,14 +552,20 @@ const PlaceOrder = () => {
               Nepal Phone Number (+977) *
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-xs text-gray-500 font-medium">🇳🇵 +977</span>
               <input
                 type="tel"
                 name="phone"
-                placeholder="98XXXXXXXX or 01-XXXXXXX"
+                placeholder="NPR +977"
                 value={formData.phone}
-                onChange={handleChange}
-                className="input-field pl-20"
+                onChange={(e) => {
+                  const value = e.target.value
+                  setFormData({
+                    ...formData,
+                    phone: value.startsWith('+977') ? value : `+977 ${value.replace(/^\+?977\s*/, '')}`,
+                  })
+                  if (fieldErrors.phone) setFieldErrors((prev) => ({ ...prev, phone: null }))
+                }}
+                className="input-field"
                 required
               />
             </div>
@@ -914,23 +882,6 @@ const PlaceOrder = () => {
                     eSewa Gateway (Nepal)
                   </span>
                 </div>
-                <span className="text-[11px] font-medium text-[#41a124] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
-                  UAT Sandbox Active
-                </span>
-              </div>
-
-              {/* Quick fill test helper */}
-              <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-lg p-2.5 text-xs text-emerald-900 flex items-center justify-between gap-2">
-                <div className="text-[11px] leading-tight">
-                  <span className="font-semibold">Test Account:</span> 9841234567 • MPIN: 1234
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleFillTestPayment('esewa')}
-                  className="bg-emerald-200 hover:bg-emerald-300 text-emerald-950 px-2.5 py-1 rounded font-medium text-[11px] transition-colors cursor-pointer"
-                >
-                  Auto-fill Test eSewa
-                </button>
               </div>
 
               <div>
@@ -939,7 +890,7 @@ const PlaceOrder = () => {
                 </label>
                 <input
                   type="tel"
-                  placeholder="98XXXXXXXX"
+                  placeholder="NPR +977"
                   value={esewaData.esewaId}
                   onChange={(e) => {
                     setEsewaData({ ...esewaData, esewaId: e.target.value })
@@ -984,23 +935,6 @@ const PlaceOrder = () => {
                     Khalti Payment Gateway
                   </span>
                 </div>
-                <span className="text-[11px] font-medium text-[#5c2d91] bg-purple-50 px-2 py-0.5 rounded border border-purple-100">
-                  Sandbox Active
-                </span>
-              </div>
-
-              {/* Quick fill test helper */}
-              <div className="bg-purple-50/80 border border-purple-200/80 rounded-lg p-2.5 text-xs text-purple-900 flex items-center justify-between gap-2">
-                <div className="text-[11px] leading-tight">
-                  <span className="font-semibold">Test Khalti:</span> 9801234567 • PIN: 1234
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleFillTestPayment('khalti')}
-                  className="bg-purple-200 hover:bg-purple-300 text-purple-950 px-2.5 py-1 rounded font-medium text-[11px] transition-colors cursor-pointer"
-                >
-                  Auto-fill Test Khalti
-                </button>
               </div>
 
               <div>
@@ -1009,7 +943,7 @@ const PlaceOrder = () => {
                 </label>
                 <input
                   type="tel"
-                  placeholder="98XXXXXXXX"
+                  placeholder="NPR +977"
                   value={khaltiData.khaltiNumber}
                   onChange={(e) => {
                     setKhaltiData({ ...khaltiData, khaltiNumber: e.target.value })
@@ -1051,11 +985,11 @@ const PlaceOrder = () => {
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-[#d32f2f]"></span>
                   <span className="text-xs font-semibold text-neutral-900 uppercase tracking-wider">
-                    Fonepay & Mobile Banking
+                    Fonepay Bank Transfer
                   </span>
                 </div>
                 <span className="text-[11px] font-medium text-[#d32f2f] bg-red-50 px-2 py-0.5 rounded border border-red-100">
-                  Nepal Banking Network
+                  Bank Transfer (Nepal)
                 </span>
               </div>
 
@@ -1063,7 +997,7 @@ const PlaceOrder = () => {
               <div className="bg-neutral-50 rounded-lg p-3 text-xs border border-gray-200/80 space-y-1">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Account Name:</span>
-                  <span className="font-semibold text-neutral-900">AURA LUXURY NEPAL PVT. LTD.</span>
+                  <span className="font-semibold text-neutral-900">PACHHEURI FASHION PVT. LTD.</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Account Number:</span>
@@ -1075,19 +1009,8 @@ const PlaceOrder = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Fonepay Merchant ID:</span>
-                  <span className="font-mono text-neutral-800">FPAY-9982-AURA</span>
+                  <span className="font-mono text-neutral-800">FPAY-9982-PACHHEURI</span>
                 </div>
-              </div>
-
-              {/* Quick fill test helper */}
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => handleFillTestPayment('bank')}
-                  className="bg-red-50 hover:bg-red-100 text-[#d32f2f] px-2.5 py-1 rounded font-medium text-[11px] border border-red-200 transition-colors cursor-pointer"
-                >
-                  Auto-fill Test Bank Info
-                </button>
               </div>
 
               <div>
@@ -1114,7 +1037,7 @@ const PlaceOrder = () => {
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. 0192837465"
+                    placeholder="Enter your bank account number"
                     value={bankData.senderAccount}
                     onChange={(e) => {
                       setBankData({ ...bankData, senderAccount: e.target.value })
@@ -1132,7 +1055,7 @@ const PlaceOrder = () => {
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. FPAY-NP-99824"
+                    placeholder="Enter transaction reference"
                     value={bankData.referenceId}
                     onChange={(e) => {
                       setBankData({ ...bankData, referenceId: e.target.value })
@@ -1162,32 +1085,6 @@ const PlaceOrder = () => {
                   <span className="text-xs font-semibold text-neutral-900 uppercase tracking-wider">
                     SCT / International Cards
                   </span>
-                </div>
-                <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                  Sandbox Active
-                </span>
-              </div>
-
-              {/* Quick-fill helper */}
-              <div className="bg-amber-50/80 border border-amber-200/80 rounded-lg p-2.5 text-xs text-amber-900 flex items-center justify-between gap-2">
-                <div className="text-[11px] leading-tight">
-                  <span className="font-semibold">Test Cards:</span> SCT or Visa
-                </div>
-                <div className="flex gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handleFillTestPayment('sct_card')}
-                    className="bg-amber-200 hover:bg-amber-300 text-amber-950 px-2 py-0.5 rounded font-medium text-[11px] transition-colors cursor-pointer"
-                  >
-                    Use SCT Card
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleFillTestPayment('visa_card')}
-                    className="bg-amber-200 hover:bg-amber-300 text-amber-950 px-2 py-0.5 rounded font-medium text-[11px] transition-colors cursor-pointer"
-                  >
-                    Use Visa
-                  </button>
                 </div>
               </div>
 
@@ -1329,7 +1226,7 @@ const PlaceOrder = () => {
               <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
-              Encrypted Nepal Payment Gateway Sandbox
+              Secure Nepal Payment Gateway
             </p>
           </div>
         </div>
