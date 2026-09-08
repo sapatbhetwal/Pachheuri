@@ -66,6 +66,17 @@ const ShopContextProvider = ({ children }) => {
       }
     })
 
+    api.getProducts().then((res) => {
+      if (!isMounted || !res.success || !Array.isArray(res.products) || res.products.length === 0) return
+      setProducts((current) => {
+        const serverProducts = res.products.map(normalizePrice)
+        const serverIds = new Set(serverProducts.map((product) => product._id))
+        return [...serverProducts, ...current.filter((product) => !serverIds.has(product._id))]
+      })
+    }).catch(() => {
+      // The local catalog remains available when the server is temporarily offline.
+    })
+
     return () => {
       isMounted = false
     }
@@ -336,12 +347,14 @@ const ShopContextProvider = ({ children }) => {
 
   // --- Admin Product CRUD with Persistent DB ---
   const addProduct = async (productData) => {
-    const newProduct = {
-      _id: 'prod_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    const draftProduct = {
       date: Date.now(),
       bestseller: false,
       ...productData,
     }
+    const result = await api.createProduct(draftProduct)
+    if (!result.success || !result.product) throw new Error(result.error || 'Unable to save product')
+    const newProduct = normalizePrice(result.product)
     setProducts((prev) => [newProduct, ...prev])
     await saveProductToDB(newProduct)
     return newProduct._id
@@ -359,11 +372,22 @@ const ShopContextProvider = ({ children }) => {
       })
     )
     if (updatedObj) {
+      try {
+        const result = await api.updateProduct(productId, updates)
+        if (result.success && result.product) updatedObj = normalizePrice(result.product)
+      } catch (error) {
+        if (error.status !== 404) throw error
+      }
       await saveProductToDB(updatedObj)
     }
   }
 
   const deleteProduct = async (productId) => {
+    try {
+      await api.deleteProduct(productId)
+    } catch (error) {
+      if (error.status !== 404) throw error
+    }
     setProducts((prev) => prev.filter((p) => p._id !== productId))
     await deleteProductFromDB(productId)
   }
@@ -380,6 +404,12 @@ const ShopContextProvider = ({ children }) => {
       })
     )
     if (target) {
+      try {
+        const result = await api.updateProduct(productId, { bestseller: target.bestseller })
+        if (result.success && result.product) target = normalizePrice(result.product)
+      } catch (error) {
+        if (error.status !== 404) throw error
+      }
       await saveProductToDB(target)
     }
   }

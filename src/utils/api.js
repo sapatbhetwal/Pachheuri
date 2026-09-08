@@ -14,7 +14,12 @@ async function request(endpoint, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }
   if (token) headers.Authorization = ['Bearer', token].join(' ')
 
-  const response = await fetch(endpoint, { ...options, headers })
+  let response
+  try {
+    response = await fetch(endpoint, { ...options, headers })
+  } catch {
+    throw new Error('Unable to connect to Pachheuri server. Please make sure the backend is running.')
+  }
   const data = await response.json().catch(() => ({}))
   if (!response.ok) {
     const error = new Error(data.error || data.message || 'Request failed')
@@ -62,6 +67,10 @@ export const api = {
   getUserOrders: () => request('/api/user/orders'),
   validateCard: (card) => request('/api/payment/validate-card', { method: 'POST', body: JSON.stringify(card) }),
   createOrder: (payload) => request('/api/orders', { method: 'POST', body: JSON.stringify(payload) }),
+  getProducts: () => request('/api/products'),
+  createProduct: (product) => request('/api/products', { method: 'POST', body: JSON.stringify(product) }),
+  updateProduct: (productId, product) => request(`/api/products/${productId}`, { method: 'PUT', body: JSON.stringify(product) }),
+  deleteProduct: (productId) => request(`/api/products/${productId}`, { method: 'DELETE' }),
   getAdminOrders: () => request('/api/admin/orders'),
   updateAdminOrderStatus: (orderId, status) => request(`/api/admin/orders/${orderId}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
 }
