@@ -4,6 +4,7 @@ import { ShopContext } from '../context/ShopContext'
 import ProductCard from '../components/ProductCard'
 import { assets } from "../assets/frontend_assets/assets";
 import { api } from '../utils/api'
+import UserAvatar from '../components/UserAvatar'
 
 const Product = () => {
   const { productId } = useParams()
@@ -216,7 +217,10 @@ const Product = () => {
             ) : reviews.map((review) => (
               <article key={review.id} className="border-b border-gray-100 pb-5">
                 <div className="flex items-center justify-between gap-4 mb-2">
-                  <p className="font-medium text-neutral-900">{review.userName}</p>
+                  <div className="flex items-center gap-2">
+                    <UserAvatar name={review.userName} size="sm" />
+                    <p className="font-medium text-neutral-900">{review.userName}</p>
+                  </div>
                   <time className="text-xs text-gray-400">{new Date(review.createdAt).toLocaleDateString()}</time>
                 </div>
                 <div className="flex gap-1 mb-2">
