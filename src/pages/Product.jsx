@@ -3,15 +3,21 @@ import { useParams, Link } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
 import ProductCard from '../components/ProductCard'
 import { assets } from "../assets/frontend_assets/assets";
+import { api } from '../utils/api'
 
 const Product = () => {
   const { productId } = useParams()
-  const { products, currency, addToCart, wishlist, toggleWishlist } = useContext(ShopContext)
+  const { products, currency, addToCart, wishlist, toggleWishlist, user } = useContext(ShopContext)
   const [product, setProduct] = useState(null)
   const [selectedImage, setSelectedImage] = useState(0)
   const [selectedSize, setSelectedSize] = useState('')
   const [showSizeError, setShowSizeError] = useState(false)
   const [addedToCart, setAddedToCart] = useState(false)
+  const [reviews, setReviews] = useState([])
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewComment, setReviewComment] = useState('')
+  const [reviewError, setReviewError] = useState('')
+  const [reviewSubmitting, setReviewSubmitting] = useState(false)
 
   useEffect(() => {
     const found = products.find((p) => p._id === productId)
@@ -23,6 +29,34 @@ const Product = () => {
       setAddedToCart(false)
     }
   }, [productId, products])
+
+  useEffect(() => {
+    if (!productId) return
+    api.getProductReviews(productId).then((res) => setReviews(res.reviews || [])).catch(() => setReviews([]))
+  }, [productId])
+
+  const averageRating = reviews.length
+    ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+    : product?.averageRating || 0
+
+  const handleReviewSubmit = async (event) => {
+    event.preventDefault()
+    setReviewError('')
+    if (!user) {
+      setReviewError('Please sign in to leave a review.')
+      return
+    }
+    setReviewSubmitting(true)
+    try {
+      const result = await api.submitProductReview(product._id, { rating: reviewRating, comment: reviewComment })
+      setReviews((current) => [result.review, ...current.filter((review) => review.userId !== result.review.userId)])
+      setReviewComment('')
+    } catch (error) {
+      setReviewError(error.message || 'Unable to submit your review.')
+    } finally {
+      setReviewSubmitting(false)
+    }
+  }
 
   const relatedProducts = products
     .filter((p) => p.category === product?.category && p._id !== productId)
@@ -85,9 +119,11 @@ const Product = () => {
             <h1 className="font-prata text-2xl lg:text-3xl text-neutral-900 mb-3">{product.name}</h1>
             <div className="flex items-center gap-2 mb-4">
               {[...Array(5)].map((_, i) => (
-                <img key={i} src={i < 4 ? assets.star_icon : assets.star_dull_icon} alt="star" className="w-4 h-4" />
+                <img key={i} src={i < Math.round(averageRating) ? assets.star_icon : assets.star_dull_icon} alt="star" className="w-4 h-4" />
               ))}
-              <span className="text-sm text-gray-400 ml-1">(128 reviews)</span>
+              <span className="text-sm text-gray-400 ml-1">
+                {reviews.length ? `${averageRating.toFixed(1)} (${reviews.length} reviews)` : 'No reviews yet'}
+              </span>
             </div>
 
             <p className="text-2xl font-semibold text-neutral-900 mb-6">{currency}{product.price}</p>
@@ -131,6 +167,69 @@ const Product = () => {
           </div>
         </div>
       </div>
+
+      {/* Reviews */}
+      <section className="section-padding py-16 border-t border-gray-100">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-end justify-between gap-4 mb-8">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-gray-400 mb-2">Customer feedback</p>
+              <h2 className="font-prata text-3xl text-neutral-900">Reviews & Ratings</h2>
+            </div>
+            <span className="text-sm text-gray-500">{reviews.length} review{reviews.length === 1 ? '' : 's'}</span>
+          </div>
+
+          {user ? (
+            <form onSubmit={handleReviewSubmit} className="bg-neutral-50 rounded-2xl p-6 mb-8">
+              <div className="flex flex-wrap items-center gap-3 mb-4">
+                <label className="text-sm font-medium text-neutral-900">Your rating</label>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((rating) => (
+                    <button type="button" key={rating} onClick={() => setReviewRating(rating)} aria-label={`${rating} stars`}>
+                      <img src={rating <= reviewRating ? assets.star_icon : assets.star_dull_icon} alt="" className="w-5 h-5" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <textarea
+                value={reviewComment}
+                onChange={(event) => setReviewComment(event.target.value)}
+                placeholder="Share your experience with this product..."
+                className="input-field min-h-24 resize-y mb-3"
+                maxLength={1000}
+                required
+              />
+              {reviewError && <p className="text-sm text-red-600 mb-3">{reviewError}</p>}
+              <button disabled={reviewSubmitting} className="btn-primary disabled:opacity-50">
+                {reviewSubmitting ? 'Publishing...' : 'Publish Review'}
+              </button>
+            </form>
+          ) : (
+            <p className="bg-neutral-50 rounded-xl p-5 text-sm text-gray-600 mb-8">
+              <Link to="/login" className="font-medium text-neutral-900 underline">Sign in</Link> to rate and review this product.
+            </p>
+          )}
+
+          <div className="space-y-5">
+            {reviews.length === 0 ? (
+              <p className="text-gray-500 text-sm">Be the first to share your opinion.</p>
+            ) : reviews.map((review) => (
+              <article key={review.id} className="border-b border-gray-100 pb-5">
+                <div className="flex items-center justify-between gap-4 mb-2">
+                  <p className="font-medium text-neutral-900">{review.userName}</p>
+                  <time className="text-xs text-gray-400">{new Date(review.createdAt).toLocaleDateString()}</time>
+                </div>
+                <div className="flex gap-1 mb-2">
+                  {[1, 2, 3, 4, 5].map((rating) => (
+                    <img key={rating} src={rating <= review.rating ? assets.star_icon : assets.star_dull_icon} alt="" className="w-3.5 h-3.5" />
+                  ))}
+                </div>
+                <p className="text-sm text-gray-600 leading-relaxed">{review.comment}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Related Products */}
       {relatedProducts.length > 0 && (

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { ShopContext } from '../../context/ShopContext.jsx'
 
 const Dashboard = () => {
-  const { products, orders } = useContext(ShopContext)
+  const { products, orders, adminUsers } = useContext(ShopContext)
 
   const totalRevenue = orders.reduce((sum, o) => sum + o.total, 0)
   const totalProducts = products.length
@@ -15,6 +15,7 @@ const Dashboard = () => {
     { label: 'Total Orders', value: totalOrders, icon: '🛒', color: 'bg-green-50 text-green-600', link: '/admin/orders' },
     { label: 'Revenue', value: `Rs. ${totalRevenue.toLocaleString('en-IN')}`, icon: 'Rs', color: 'bg-amber-50 text-amber-600', link: '/admin/orders' },
     { label: 'Bestsellers', value: bestsellerCount, icon: '☆', color: 'bg-rose-50 text-rose-600', link: '/admin/products' },
+    { label: 'Total Users', value: adminUsers.length, icon: '◎', color: 'bg-violet-50 text-violet-600', link: '/admin/users' },
   ]
 
   const recentOrders = orders.slice(0, 5)

@@ -79,11 +79,31 @@ export interface UserData {
   wishlist: string[]
 }
 
+export interface ProductReview {
+  id: string
+  productId: string
+  userId: string
+  userName: string
+  rating: number
+  comment: string
+  createdAt: string
+}
+
+export interface ActivityLog {
+  id: string
+  userId: string
+  action: string
+  detail: string
+  createdAt: string
+}
+
 export interface DBData {
   users: User[]
   userData: Record<string, UserData>
   orders: Order[]
   products: any[]
+  reviews: ProductReview[]
+  activityLogs: ActivityLog[]
   sessions: Record<string, { userId: string; createdAt: number }>
 }
 
@@ -190,6 +210,8 @@ const initialData: DBData = {
     },
   ],
   products: [],
+  reviews: [],
+  activityLogs: [],
   sessions: {},
 }
 
@@ -220,6 +242,8 @@ export function readDB(): DBData {
     if (!inMemoryDB.userData) inMemoryDB.userData = initialData.userData
     if (!inMemoryDB.orders) inMemoryDB.orders = initialData.orders
     if (!inMemoryDB.products) inMemoryDB.products = initialData.products
+    if (!inMemoryDB.reviews) inMemoryDB.reviews = initialData.reviews
+    if (!inMemoryDB.activityLogs) inMemoryDB.activityLogs = initialData.activityLogs
     if (!inMemoryDB.sessions) inMemoryDB.sessions = initialData.sessions
 
     // Ensure default admin always exists for easy access

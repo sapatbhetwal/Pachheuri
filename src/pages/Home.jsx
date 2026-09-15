@@ -7,7 +7,13 @@ import ProductCard from '../components/ProductCard'
 import { assets } from "../assets/frontend_assets/assets";
 const Home = () => {
   const { products } = useContext(ShopContext)
-  const bestsellers = products.filter((p) => p.bestseller).slice(0, 8)
+  const highRated = [...products]
+    .filter((p) => p.reviewCount > 0)
+    .sort((a, b) => (b.averageRating - a.averageRating) || (b.reviewCount - a.reviewCount))
+    .slice(0, 8)
+  const bestsellers = [...products]
+    .sort((a, b) => (b.soldCount || 0) - (a.soldCount || 0))
+    .slice(0, 8)
   const latest = [...products].sort((a, b) => b.date - a.date).slice(0, 8)
 
   const categories = [
@@ -37,16 +43,26 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Bestsellers */}
+      {/* High-rated products */}
       <section className="section-padding py-20 bg-neutral-50">
-        <Title text1="Our" text2="Bestsellers" />
+        <Title text1="Top" text2="Rated" />
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 lg:gap-8">
-          {bestsellers.map((product) => (
+          {(highRated.length ? highRated : products.slice(0, 8)).map((product) => (
             <ProductCard key={product._id} product={product} />
           ))}
         </div>
         <div className="text-center mt-12">
           <Link to="/collection" className="btn-outline inline-block">View All Products</Link>
+        </div>
+      </section>
+
+      {/* Most sold products */}
+      <section className="section-padding py-20">
+        <Title text1="Most" text2="Sold" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 lg:gap-8">
+          {bestsellers.map((product) => (
+            <ProductCard key={product._id} product={product} />
+          ))}
         </div>
       </section>
 

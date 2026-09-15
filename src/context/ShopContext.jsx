@@ -53,6 +53,8 @@ const ShopContextProvider = ({ children }) => {
   const [user, setUser] = useState(() => getLocalData('pachheuri_user', null))
   const [profile, setProfile] = useState(null)
   const [orders, setOrders] = useState([])
+  const [adminUsers, setAdminUsers] = useState([])
+  const [activityLogs, setActivityLogs] = useState([])
   const [wishlist, setWishlist] = useState(() => getLocalData('pachheuri_wishlist', []))
   const [authLoading, setAuthLoading] = useState(true)
 
@@ -68,11 +70,16 @@ const ShopContextProvider = ({ children }) => {
     })
 
     api.getProducts().then((res) => {
-      if (!isMounted || !res.success || !Array.isArray(res.products) || res.products.length === 0) return
+      if (!isMounted || !res.success) return
       setProducts((current) => {
-        const serverProducts = res.products.map(normalizePrice)
+        const productStats = res.productStats || {}
+        const withStats = (product) => ({ ...product, ...(productStats[product._id] || {}) })
+        const serverProducts = (res.products || []).map(normalizePrice).map(withStats)
         const serverIds = new Set(serverProducts.map((product) => product._id))
-        return [...serverProducts, ...current.filter((product) => !serverIds.has(product._id))]
+        return [
+          ...serverProducts,
+          ...current.filter((product) => !serverIds.has(product._id)).map(withStats),
+        ]
       })
     }).catch(() => {
       // The local catalog remains available when the server is temporarily offline.
@@ -130,12 +137,15 @@ const ShopContextProvider = ({ children }) => {
     try {
       // Admin sees all orders; regular user sees only their own orders
       if (currentUser.role === 'admin') {
-        const res = await api.getAdminOrders().catch(() => null)
-        if (res && res.orders) {
-          setOrders(res.orders)
-        } else {
-          const localOrders = await fetchOrdersFromDB()
-          setOrders(localOrders || [])
+        const [ordersRes, usersRes] = await Promise.all([
+          api.getAdminOrders().catch(() => null),
+          api.getAdminUsers().catch(() => null),
+        ])
+        if (ordersRes && ordersRes.orders) setOrders(ordersRes.orders)
+        else setOrders((await fetchOrdersFromDB()) || [])
+        if (usersRes) {
+          setAdminUsers(usersRes.users || [])
+          setActivityLogs(usersRes.logs || [])
         }
       } else {
         const [ordersRes, cartRes, wishRes, profRes] = await Promise.allSettled([
@@ -448,6 +458,8 @@ const ShopContextProvider = ({ children }) => {
     resetPassword,
     updateProfile,
     orders,
+    adminUsers,
+    activityLogs,
     placeOrder,
     updateOrderStatus,
     wishlist,
