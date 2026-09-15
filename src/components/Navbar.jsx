@@ -2,6 +2,7 @@ import React, { useState, useContext, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
 import { assets } from "../assets/frontend_assets/assets";
+import UserAvatar from './UserAvatar'
 const Navbar = () => {
   const { getCartCount, user, logout, setShowSearch, showSearch } = useContext(ShopContext)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -58,9 +59,12 @@ const Navbar = () => {
                 <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 shadow-lg rounded-sm py-2 animate-fade-in-up">
                   {user ? (
                     <>
-                      <div className="px-4 py-2 border-b border-gray-100">
-                        <p className="text-sm font-medium">{user.name}</p>
-                        <p className="text-xs text-gray-500">{user.email}</p>
+                      <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3">
+                        <UserAvatar name={user.name} size="sm" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{user.name}</p>
+                          <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                        </div>
                       </div>
                       <Link to="/orders" className="block px-4 py-2 text-sm hover:bg-gray-50">My Orders</Link>
                       <Link to="/profile" className="block px-4 py-2 text-sm hover:bg-gray-50">Profile Settings</Link>

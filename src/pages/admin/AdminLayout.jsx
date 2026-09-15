@@ -2,6 +2,7 @@ import React, { useContext } from 'react'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { ShopContext } from '../../context/ShopContext.jsx'
 import { assets } from '../../assets/admin_assets/assets'
+import UserAvatar from '../../components/UserAvatar'
 const AdminLayout = () => {
   const { user, logout } = useContext(ShopContext)
   const location = useLocation()
@@ -55,9 +56,7 @@ const AdminLayout = () => {
         </nav>
         <div className="p-4 border-t border-gray-50">
           <div className="flex items-center gap-3 px-4 py-3 mb-3">
-            <div className="w-9 h-9 bg-neutral-900 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs font-bold">{user.name[0]}</span>
-            </div>
+            <UserAvatar name={user.name} size="sm" className="bg-neutral-900" />
             <div>
               <p className="text-sm font-semibold text-neutral-900">{user.name}</p>
               <p className="text-xs text-gray-400">Administrator</p>

@@ -2,6 +2,7 @@ import React, { useContext, useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
 import Title from '../components/Title'
+import UserAvatar from '../components/UserAvatar'
 import {
   PROVINCES,
   NEPAL_DISTRICTS_BY_PROVINCE,
@@ -145,9 +146,11 @@ const Profile = () => {
         <div className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8 shadow-sm">
           {/* Account Overview Header */}
           <div className="flex items-center justify-between pb-6 mb-6 border-b border-gray-100">
-            <div>
-              <h2 className="text-xl font-medium text-neutral-900">{user.name}</h2>
-              <p className="text-sm text-gray-500 font-mono text-xs">{user.email}</p>
+            <div className="flex items-center gap-3">
+              <UserAvatar name={user.name} size="lg" />
+              <div>
+                <h2 className="text-xl font-medium text-neutral-900">{user.name}</h2>
+                <p className="text-sm text-gray-500 font-mono text-xs">{user.email}</p>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-gray-100 text-neutral-800">
                   Role: {user.role}
@@ -155,6 +158,7 @@ const Profile = () => {
                 <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
                   🇳🇵 Nepal Region
                 </span>
+              </div>
               </div>
             </div>
             <button

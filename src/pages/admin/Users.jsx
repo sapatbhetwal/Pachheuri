@@ -1,5 +1,6 @@
 import React, { useContext } from 'react'
 import { ShopContext } from '../../context/ShopContext.jsx'
+import UserAvatar from '../../components/UserAvatar'
 
 const Users = () => {
   const { adminUsers, activityLogs } = useContext(ShopContext)
@@ -31,7 +32,12 @@ const Users = () => {
                 <tbody>
                   {adminUsers.map((user) => (
                     <tr key={user.id} className="border-b border-gray-50 last:border-0">
-                      <td className="py-4 font-medium text-neutral-900">{user.name}</td>
+                      <td className="py-4">
+                        <div className="flex items-center gap-2">
+                          <UserAvatar name={user.name} size="sm" />
+                          <span className="font-medium text-neutral-900">{user.name}</span>
+                        </div>
+                      </td>
                       <td className="py-4 text-gray-600">{user.email}</td>
                       <td className="py-4 text-gray-400">{new Date(user.createdAt).toLocaleDateString()}</td>
                     </tr>
