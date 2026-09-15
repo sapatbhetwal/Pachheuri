@@ -1,10 +1,15 @@
-import React, { useContext } from 'react'
+import React, { useContext, useState } from 'react'
 import { ShopContext } from '../../context/ShopContext.jsx'
 import UserAvatar from '../../components/UserAvatar'
 
 const Users = () => {
   const { adminUsers, activityLogs } = useContext(ShopContext)
+  const [selectedUserId, setSelectedUserId] = useState(null)
   const userNames = Object.fromEntries(adminUsers.map((user) => [user.id, user.name]))
+  const selectedUser = adminUsers.find((user) => user.id === selectedUserId)
+  const selectedLogs = selectedUserId
+    ? activityLogs.filter((log) => log.userId === selectedUserId)
+    : []
 
   return (
     <div>
@@ -31,11 +36,21 @@ const Users = () => {
                 </thead>
                 <tbody>
                   {adminUsers.map((user) => (
-                    <tr key={user.id} className="border-b border-gray-50 last:border-0">
+                    <tr
+                      key={user.id}
+                      onClick={() => setSelectedUserId(user.id)}
+                      className={`border-b border-gray-50 last:border-0 cursor-pointer transition-colors ${
+                        selectedUserId === user.id ? 'bg-neutral-50' : 'hover:bg-gray-50/70'
+                      }`}
+                      aria-selected={selectedUserId === user.id}
+                    >
                       <td className="py-4">
                         <div className="flex items-center gap-2">
                           <UserAvatar name={user.name} size="sm" />
-                          <span className="font-medium text-neutral-900">{user.name}</span>
+                          <span className="font-medium text-neutral-900">
+                            {user.name}
+                            {selectedUserId === user.id && <span className="ml-2 text-xs text-gray-400">Selected</span>}
+                          </span>
                         </div>
                       </td>
                       <td className="py-4 text-gray-600">{user.email}</td>
@@ -50,18 +65,36 @@ const Users = () => {
 
         <section className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="font-semibold text-neutral-900">Activity Logs</h2>
-            <span className="text-sm text-gray-400">{activityLogs.length} events</span>
+            <div>
+              <h2 className="font-semibold text-neutral-900">
+                {selectedUser ? `${selectedUser.name}'s Activity` : 'Activity Logs'}
+              </h2>
+              {selectedUser && <p className="text-xs text-gray-400 mt-1">{selectedUser.email}</p>}
+            </div>
+            {selectedUser && (
+              <button
+                type="button"
+                onClick={() => setSelectedUserId(null)}
+                className="text-xs font-medium text-neutral-700 hover:underline"
+              >
+                Clear selection
+              </button>
+            )}
           </div>
-          {activityLogs.length === 0 ? (
-            <p className="py-10 text-center text-sm text-gray-400">No activity recorded yet.</p>
+          {!selectedUser ? (
+            <div className="py-10 text-center">
+              <p className="text-sm text-gray-500">Select a user to view their activity history.</p>
+              <p className="text-xs text-gray-400 mt-2">Registration, sign-ins, orders, reviews, and profile updates appear here.</p>
+            </div>
+          ) : selectedLogs.length === 0 ? (
+            <p className="py-10 text-center text-sm text-gray-400">No activity recorded for this user yet.</p>
           ) : (
             <div className="space-y-1 max-h-[30rem] overflow-y-auto">
-              {activityLogs.map((log) => (
+              {selectedLogs.map((log) => (
                 <div key={log.id} className="flex items-start justify-between gap-4 py-3 border-b border-gray-50 last:border-0">
                   <div>
                     <p className="text-sm text-neutral-900">
-                      <span className="font-medium">{userNames[log.userId] || 'User'}</span> {log.detail.toLowerCase()}
+                      <span className="font-medium">{userNames[log.userId] || selectedUser.name}</span> {log.detail.toLowerCase()}
                     </p>
                     <p className="text-xs text-gray-400 mt-1">{log.action.replaceAll('_', ' ')}</p>
                   </div>
