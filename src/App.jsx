@@ -21,6 +21,7 @@ import Dashboard from './pages/admin/Dashboard.jsx'
 import ProductList from './pages/admin/ProductList.jsx'
 import AddProduct from './pages/admin/AddProduct.jsx'
 import AdminOrders from './pages/admin/AdminOrders.jsx'
+import Users from './pages/admin/Users.jsx'
 
 const App = () => {
   const location = useLocation()
@@ -54,6 +55,7 @@ const App = () => {
             <Route path="add-product" element={<AddProduct />} />
             <Route path="edit-product/:productId" element={<AddProduct />} />
             <Route path="orders" element={<AdminOrders />} />
+            <Route path="users" element={<Users />} />
           </Route>
         </Routes>
       </main>

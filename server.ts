@@ -3,7 +3,7 @@ import cors from 'cors'
 import path from 'path'
 import crypto from 'crypto'
 import { createServer as createViteServer } from 'vite'
-import { readDB, writeDB, hashPassword, User, Order } from './server/db'
+import { readDB, writeDB, hashPassword, User, Order, ProductReview, ActivityLog } from './server/db'
 
 const DEFAULT_PORT = 3000
 
@@ -147,6 +147,56 @@ function requireAdmin(req: AuthenticatedRequest, res: Response, next: NextFuncti
   next()
 }
 
+function addActivityLog(db: ReturnType<typeof readDB>, userId: string, action: string, detail: string): void {
+  const log: ActivityLog = {
+    id: 'log_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    userId,
+    action,
+    detail,
+    createdAt: new Date().toISOString(),
+  }
+  db.activityLogs.unshift(log)
+  db.activityLogs = db.activityLogs.slice(0, 5000)
+}
+
+function enrichProducts(db: ReturnType<typeof readDB>) {
+  return (db.products || []).map((product) => {
+    const productReviews = db.reviews.filter((review) => review.productId === product._id)
+    const soldCount = db.orders.reduce((total, order) => {
+      const quantities = order.items?.[product._id]
+      return total + (quantities ? Object.values(quantities).reduce((sum, quantity) => sum + Number(quantity || 0), 0) : 0)
+    }, 0)
+    const reviewTotal = productReviews.reduce((sum, review) => sum + review.rating, 0)
+    return {
+      ...product,
+      averageRating: productReviews.length ? Number((reviewTotal / productReviews.length).toFixed(1)) : 0,
+      reviewCount: productReviews.length,
+      soldCount,
+    }
+  })
+}
+
+function getProductStats(db: ReturnType<typeof readDB>) {
+  const ids = new Set([
+    ...db.reviews.map((review) => review.productId),
+    ...db.orders.flatMap((order) => Object.keys(order.items || {})),
+  ])
+  return Object.fromEntries(Array.from(ids).map((productId) => {
+    const productReviews = db.reviews.filter((review) => review.productId === productId)
+    const soldCount = db.orders.reduce((total, order) => {
+      const quantities = order.items?.[productId]
+      return total + (quantities ? Object.values(quantities).reduce((sum, quantity) => sum + Number(quantity || 0), 0) : 0)
+    }, 0)
+    return [productId, {
+      averageRating: productReviews.length
+        ? Number((productReviews.reduce((sum, review) => sum + review.rating, 0) / productReviews.length).toFixed(1))
+        : 0,
+      reviewCount: productReviews.length,
+      soldCount,
+    }]
+  }))
+}
+
 async function startServer() {
   const app = express()
 
@@ -193,6 +243,7 @@ async function startServer() {
 
     db.users.push(newUser)
     db.userData[newUser.id] = { cart: {}, wishlist: [] }
+    addActivityLog(db, newUser.id, 'registered', 'Created an account')
 
     // Create session token
     const token = 'tok_' + crypto.randomBytes(24).toString('hex')
@@ -220,6 +271,7 @@ async function startServer() {
 
     const token = 'tok_' + crypto.randomBytes(24).toString('hex')
     db.sessions[token] = { userId: user.id, createdAt: Date.now() }
+    addActivityLog(db, user.id, 'login', 'Signed in')
     writeDB(db)
 
     const safeUser = { id: user.id, name: user.name, email: user.email, role: user.role }
@@ -248,6 +300,7 @@ async function startServer() {
 
       const token = 'adm_' + crypto.randomBytes(24).toString('hex')
       db.sessions[token] = { userId: admin.id, createdAt: Date.now() }
+      addActivityLog(db, admin.id, 'admin_login', 'Signed in to the admin dashboard')
       writeDB(db)
 
       return res.json({
@@ -263,6 +316,7 @@ async function startServer() {
     if (user && user.passwordHash === hashPassword(password)) {
       const token = 'adm_' + crypto.randomBytes(24).toString('hex')
       db.sessions[token] = { userId: user.id, createdAt: Date.now() }
+      addActivityLog(db, user.id, 'admin_login', 'Signed in to the admin dashboard')
       writeDB(db)
       return res.json({
         success: true,
@@ -299,6 +353,7 @@ async function startServer() {
     if (req.token) {
       const db = readDB()
       delete db.sessions[req.token]
+      if (req.user) addActivityLog(db, req.user.id, 'logout', 'Signed out')
       writeDB(db)
     }
     res.json({ success: true, message: 'Logged out successfully' })
@@ -463,6 +518,7 @@ async function startServer() {
     target.zip = postalCode !== undefined ? postalCode.trim() : (zip !== undefined ? zip.trim() : target.zip)
     target.country = country !== undefined ? country.trim() : 'Nepal'
 
+    addActivityLog(db, u.id, 'profile_updated', 'Updated profile and delivery details')
     writeDB(db)
     res.json({ success: true, profile: target })
   })
@@ -748,6 +804,9 @@ async function startServer() {
     }
 
     db.orders.unshift(newOrder)
+    if (req.user) {
+      addActivityLog(db, req.user.id, 'order_created', `Placed order ${orderId}`)
+    }
 
     // If authenticated user, clear user's cart in DB and save address to profile for future reuse
     if (req.user) {
@@ -796,6 +855,20 @@ async function startServer() {
 
   // --- 4. Admin Management Endpoints ---
 
+  app.get('/api/admin/users', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+    const db = readDB()
+    const users = db.users
+      .filter((user) => user.role !== 'admin')
+      .map((user) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        createdAt: user.createdAt,
+        phone: user.phone || '',
+      }))
+    res.json({ success: true, users, logs: db.activityLogs })
+  })
+
   app.get('/api/admin/orders', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
     const db = readDB()
     res.json({ success: true, orders: db.orders })
@@ -822,7 +895,48 @@ async function startServer() {
 
   app.get('/api/products', (req, res) => {
     const db = readDB()
-    res.json({ success: true, products: db.products || [] })
+    res.json({ success: true, products: enrichProducts(db), productStats: getProductStats(db) })
+  })
+
+  app.get('/api/products/:id/reviews', (req, res) => {
+    const db = readDB()
+    const reviews = db.reviews
+      .filter((review) => review.productId === req.params.id)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    res.json({ success: true, reviews })
+  })
+
+  app.post('/api/products/:id/reviews', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+    const rating = Number(req.body.rating)
+    const comment = String(req.body.comment || '').trim()
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      return res.status(400).json({ success: false, error: 'Rating must be a whole number from 1 to 5' })
+    }
+    if (comment.length < 3 || comment.length > 1000) {
+      return res.status(400).json({ success: false, error: 'Comment must be between 3 and 1000 characters' })
+    }
+
+    const db = readDB()
+    const existing = db.reviews.find(
+      (review) => review.productId === req.params.id && review.userId === req.user!.id
+    )
+    const review: ProductReview = {
+      id: existing?.id || 'review_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      productId: req.params.id,
+      userId: req.user!.id,
+      userName: req.user!.name,
+      rating,
+      comment,
+      createdAt: new Date().toISOString(),
+    }
+    if (existing) {
+      Object.assign(existing, review)
+    } else {
+      db.reviews.unshift(review)
+    }
+    addActivityLog(db, req.user!.id, 'review_submitted', `Reviewed product ${req.params.id}`)
+    writeDB(db)
+    res.status(existing ? 200 : 201).json({ success: true, review })
   })
 
   app.post('/api/products', requireAdmin, (req: AuthenticatedRequest, res: Response) => {

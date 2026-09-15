@@ -68,9 +68,15 @@ export const api = {
   validateCard: (card) => request('/api/payment/validate-card', { method: 'POST', body: JSON.stringify(card) }),
   createOrder: (payload) => request('/api/orders', { method: 'POST', body: JSON.stringify(payload) }),
   getProducts: () => request('/api/products'),
+  getProductReviews: (productId) => request(`/api/products/${productId}/reviews`),
+  submitProductReview: (productId, review) => request(`/api/products/${productId}/reviews`, {
+    method: 'POST',
+    body: JSON.stringify(review),
+  }),
   createProduct: (product) => request('/api/products', { method: 'POST', body: JSON.stringify(product) }),
   updateProduct: (productId, product) => request(`/api/products/${productId}`, { method: 'PUT', body: JSON.stringify(product) }),
   deleteProduct: (productId) => request(`/api/products/${productId}`, { method: 'DELETE' }),
   getAdminOrders: () => request('/api/admin/orders'),
+  getAdminUsers: () => request('/api/admin/users'),
   updateAdminOrderStatus: (orderId, status) => request(`/api/admin/orders/${orderId}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
 }

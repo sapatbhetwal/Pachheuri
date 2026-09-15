@@ -56,12 +56,14 @@ const ProductCard = ({ product }) => {
           {[...Array(5)].map((_, i) => (
             <img
               key={i}
-              src={i < 4 ? assets.star_icon : assets.star_dull_icon}
+              src={i < Math.round(product.averageRating || 0) ? assets.star_icon : assets.star_dull_icon}
               alt="star"
               className="w-3 h-3"
             />
           ))}
-          <span className="text-xs text-gray-400 ml-1">(24)</span>
+          <span className="text-xs text-gray-400 ml-1">
+            {product.reviewCount ? `(${product.reviewCount})` : 'No reviews'}
+          </span>
         </div>
         <p className="text-sm font-semibold text-neutral-900">{currency}{product.price}</p>
       </div>
