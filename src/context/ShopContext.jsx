@@ -12,6 +12,7 @@ import {
   setLocalData,
 } from '../utils/db'
 import { api, getStoredToken, setStoredToken } from '../utils/api'
+import { getDeliveryFeeByDistrict } from '../data/nepalLocationData'
 
 export const ShopContext = createContext()
 
@@ -255,7 +256,8 @@ const ShopContextProvider = ({ children }) => {
 
   // --- Order & Payment Functions ---
   const placeOrder = async ({ deliveryInfo, method, paymentDetails }) => {
-    const total = getCartAmount() + delivery_fee
+    const deliveryFee = getDeliveryFeeByDistrict(deliveryInfo?.district)
+    const total = getCartAmount() + deliveryFee
 
     // Call backend endpoint to validate payment details and record order
     const result = await api.createOrder({
