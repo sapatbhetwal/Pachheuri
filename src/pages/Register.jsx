@@ -1,10 +1,11 @@
 import React, { useContext, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
 
 const Register = () => {
   const { register } = useContext(ShopContext)
   const navigate = useNavigate()
+  const location = useLocation()
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -37,8 +38,17 @@ const Register = () => {
 
     setLoading(true)
     try {
-      await register(formData.name.trim(), formData.email.trim(), formData.password)
-      navigate('/', { state: { message: 'Account created successfully! Welcome to Pachheuri.' } })
+      await register(
+        formData.name.trim(),
+        formData.email.trim(),
+        formData.password,
+        location.state?.pendingCart
+      )
+      const destination = location.state?.from || '/'
+      navigate(destination, {
+        replace: true,
+        state: destination === '/' ? { message: 'Account created successfully! Welcome to Pachheuri.' } : undefined,
+      })
     } catch (err) {
       setError(err.message || 'Registration failed. Please try again.')
     } finally {

@@ -43,7 +43,9 @@ const AdminOrders = () => {
                     order.deliveryInfo
                       ? `${order.deliveryInfo.firstName} ${order.deliveryInfo.lastName}`.trim()
                       : `${order.firstName || ''} ${order.lastName || ''}`.trim() || 'Customer'
-                  const custEmail = order.deliveryInfo?.email || order.userEmail || order.email || ''
+                  const accountEmail = order.userEmail || order.deliveryInfo?.email || order.email || ''
+                  const deliveryEmail = order.deliveryInfo?.email
+                  const orderItems = Object.entries(order.items || {})
 
                   return (
                     <tr
@@ -57,31 +59,44 @@ const AdminOrders = () => {
                         </p>
                       </td>
                       <td className="px-6 py-5">
-                        <div className="flex -space-x-2">
-                          {Object.entries(order.items || {})
-                            .slice(0, 3)
-                            .map(([itemId]) => {
-                              const product = products.find((p) => p._id === itemId)
-                              const img = Array.isArray(product?.image) ? product.image[0] : product?.image
-                              return img ? (
-                                <img
-                                  key={itemId}
-                                  src={img}
-                                  alt=""
-                                  className="w-8 h-8 rounded-full border-2 border-white object-cover bg-gray-100"
-                                />
-                              ) : null
-                            })}
-                          {Object.keys(order.items || {}).length > 3 && (
-                            <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500">
-                              +{Object.keys(order.items).length - 3}
-                            </div>
-                          )}
+                        <div className="min-w-48 space-y-2">
+                          {orderItems.map(([itemId, sizes]) => {
+                            const product = products.find((p) => p._id === itemId)
+                            const sizeSummary = Object.entries(sizes || {})
+                              .map(([size, quantity]) => `${size} × ${quantity}`)
+                              .join(', ')
+                            return (
+                              <div key={itemId}>
+                                <p className="font-semibold text-neutral-900">
+                                  {product?.name || `Product ${itemId}`}
+                                </p>
+                                <p className="text-xs text-gray-500">{sizeSummary || 'Quantity unavailable'}</p>
+                              </div>
+                            )
+                          })}
+                          <p className="text-[11px] text-gray-400">
+                            {orderItems.reduce(
+                              (total, [, sizes]) =>
+                                total +
+                                Object.values(sizes || {}).reduce(
+                                  (sum, quantity) => sum + Number(quantity || 0),
+                                  0
+                                ),
+                              0
+                            )}{' '}
+                            item(s)
+                          </p>
                         </div>
                       </td>
                       <td className="px-6 py-5">
                         <p className="font-bold text-neutral-900">{custName}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{custEmail}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Account: {accountEmail}</p>
+                        {deliveryEmail && deliveryEmail !== accountEmail && (
+                          <p className="text-xs text-gray-400 mt-0.5">Delivery: {deliveryEmail}</p>
+                        )}
+                        {order.deliveryInfo?.phone && (
+                          <p className="text-xs text-gray-400 mt-0.5">{order.deliveryInfo.phone}</p>
+                        )}
                       </td>
                       <td className="px-6 py-5">
                         <div className="text-xs">

@@ -26,8 +26,8 @@ const Login = () => {
         await adminLogin(email, password)
         navigate('/admin')
       } else {
-        await login(email, password)
-        navigate('/')
+        await login(email, password, location.state?.pendingCart)
+        navigate(location.state?.from || '/', { replace: true })
       }
     } catch (err) {
       setError(err.message || 'Invalid email or password. Please try again.')

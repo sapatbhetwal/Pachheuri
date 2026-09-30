@@ -46,7 +46,7 @@ function getCardBrand(num) {
 }
 
 const PlaceOrder = () => {
-  const { getCartAmount, currency, placeOrder, cartItems, user, profile } =
+  const { getCartAmount, currency, placeOrder, cartItems, user, profile, authLoading } =
     useContext(ShopContext)
   const navigate = useNavigate()
 
@@ -376,6 +376,14 @@ const PlaceOrder = () => {
     }
   }
 
+  if (authLoading) {
+    return (
+      <div className="section-padding py-20 text-center min-h-[50vh]">
+        <p className="text-sm text-gray-500">Checking your account...</p>
+      </div>
+    )
+  }
+
   if (Object.keys(cartItems).length === 0 && !successOrder) {
     return (
       <div className="section-padding py-20 text-center">
@@ -383,6 +391,41 @@ const PlaceOrder = () => {
         <button onClick={() => navigate('/shop')} className="btn-primary cursor-pointer">
           Shop Now
         </button>
+      </div>
+    )
+  }
+
+  if (user?.role !== 'user' && !successOrder) {
+    return (
+      <div className="section-padding py-20 min-h-[60vh] flex items-center justify-center">
+        <div className="w-full max-w-lg text-center bg-white border border-gray-100 rounded-2xl shadow-sm p-8 md:p-10">
+          <h1 className="font-prata text-2xl text-neutral-900 mb-3">
+            {user ? 'Customer account required' : 'Sign in to checkout'}
+          </h1>
+          <p className="text-sm text-gray-500 mb-7">
+            {user
+              ? 'Please sign in with a customer account to place an order.'
+              : 'Create an account or sign in before continuing to delivery and payment.'}
+          </p>
+          <div className="flex flex-col sm:flex-row justify-center gap-3">
+            <Link
+              to="/login"
+              state={{ from: '/place-order', pendingCart: cartItems }}
+              className="btn-primary text-center"
+            >
+              Sign In
+            </Link>
+            {!user && (
+              <Link
+                to="/register"
+                state={{ from: '/place-order', pendingCart: cartItems }}
+                className="border border-neutral-900 text-neutral-900 px-6 py-3 rounded-full text-sm font-medium hover:bg-gray-50 text-center"
+              >
+                Create Account
+              </Link>
+            )}
+          </div>
+        </div>
       </div>
     )
   }

@@ -140,6 +140,16 @@ function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunctio
   next()
 }
 
+function requireCustomer(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  if (!req.user) {
+    return res.status(401).json({ success: false, error: 'Sign in with a customer account to place an order' })
+  }
+  if (req.user.role !== 'user') {
+    return res.status(403).json({ success: false, error: 'A customer account is required to place an order' })
+  }
+  next()
+}
+
 function requireAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   if (!req.user || req.user.role !== 'admin') {
     return res.status(403).json({ success: false, error: 'Admin access required' })
@@ -596,7 +606,7 @@ async function startServer() {
   app.post('/api/payments/validate-card', handleValidateCard)
 
   // Place Order with Nepal Payment Processing
-  app.post('/api/orders', (req: AuthenticatedRequest, res: Response) => {
+  app.post('/api/orders', requireCustomer, (req: AuthenticatedRequest, res: Response) => {
     const { deliveryInfo, items, method, paymentDetails, total } = req.body
 
     // Delivery info validation for Nepal
@@ -792,8 +802,8 @@ async function startServer() {
 
     const newOrder: Order = {
       id: orderId,
-      userId: req.user ? req.user.id : null,
-      userEmail: email,
+      userId: req.user!.id,
+      userEmail: req.user!.email,
       date: new Date().toISOString(),
       items,
       total,
@@ -804,32 +814,28 @@ async function startServer() {
     }
 
     db.orders.unshift(newOrder)
-    if (req.user) {
-      addActivityLog(db, req.user.id, 'order_created', `Placed order ${orderId}`)
-    }
+    addActivityLog(db, req.user!.id, 'order_created', `Placed order ${orderId}`)
 
-    // If authenticated user, clear user's cart in DB and save address to profile for future reuse
-    if (req.user) {
-      if (db.userData[req.user.id]) {
-        db.userData[req.user.id].cart = {}
-      }
-      const u = db.users.find((usr) => usr.id === req.user!.id)
-      if (u) {
-        u.fullName = recipientName
-        u.phone = phone
-        u.province = province
-        u.district = district
-        u.municipality = municipality
-        u.ward = ward
-        u.tole = tole
-        u.houseNo = deliveryInfo.houseNo || u.houseNo
-        u.postalCode = deliveryInfo.postalCode || u.postalCode
-        u.deliveryInstructions = deliveryInfo.deliveryInstructions || u.deliveryInstructions
-        u.address = fullDeliveryInfo.address
-        u.city = district
-        u.state = province
-        u.country = 'Nepal'
-      }
+    // Clear the customer's cart and save the address for future reuse.
+    if (db.userData[req.user!.id]) {
+      db.userData[req.user!.id].cart = {}
+    }
+    const u = db.users.find((usr) => usr.id === req.user!.id)
+    if (u) {
+      u.fullName = recipientName
+      u.phone = phone
+      u.province = province
+      u.district = district
+      u.municipality = municipality
+      u.ward = ward
+      u.tole = tole
+      u.houseNo = deliveryInfo.houseNo || u.houseNo
+      u.postalCode = deliveryInfo.postalCode || u.postalCode
+      u.deliveryInstructions = deliveryInfo.deliveryInstructions || u.deliveryInstructions
+      u.address = fullDeliveryInfo.address
+      u.city = district
+      u.state = province
+      u.country = 'Nepal'
     }
 
     writeDB(db)

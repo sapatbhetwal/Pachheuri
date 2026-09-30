@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useCallback } from 'react'
+import React, { createContext, useState, useEffect, useCallback, useRef } from 'react'
 import { products as initialProducts } from '../assets/frontend_assets/assets'
 import {
   fetchProductsFromDB,
@@ -57,6 +57,7 @@ const ShopContextProvider = ({ children }) => {
   const [activityLogs, setActivityLogs] = useState([])
   const [wishlist, setWishlist] = useState(() => getLocalData('pachheuri_wishlist', []))
   const [authLoading, setAuthLoading] = useState(true)
+  const pendingCheckoutCart = useRef(null)
 
   // Load products from persistent IndexedDB
   useEffect(() => {
@@ -166,7 +167,8 @@ const ShopContextProvider = ({ children }) => {
         }
 
         if (cartRes.status === 'fulfilled' && cartRes.value.cart) {
-          setCartItems(cartRes.value.cart)
+          setCartItems(pendingCheckoutCart.current || cartRes.value.cart)
+          pendingCheckoutCart.current = null
         }
 
         if (wishRes.status === 'fulfilled' && wishRes.value.wishlist) {
@@ -295,21 +297,35 @@ const ShopContextProvider = ({ children }) => {
   }
 
   // --- Auth Functions ---
-  const register = async (name, email, password) => {
+  const register = async (name, email, password, checkoutCart) => {
     const res = await api.register({ name, email, password })
     if (res.success && res.user) {
+      if (checkoutCart) {
+        pendingCheckoutCart.current = checkoutCart
+        setCartItems(checkoutCart)
+        await api.updateCart(checkoutCart).catch((err) => {
+          console.error('Failed to save checkout cart to the new account:', err)
+        })
+      }
       setUser(res.user)
       setProfile(res.user)
-      setCartItems({})
+      if (!checkoutCart) setCartItems({})
       setWishlist([])
       return res.user
     }
     throw new Error(res.error || 'Registration failed')
   }
 
-  const login = async (email, password) => {
+  const login = async (email, password, checkoutCart) => {
     const res = await api.login({ email, password })
     if (res.success && res.user) {
+      if (checkoutCart) {
+        pendingCheckoutCart.current = checkoutCart
+        setCartItems(checkoutCart)
+        await api.updateCart(checkoutCart).catch((err) => {
+          console.error('Failed to save checkout cart to the account:', err)
+        })
+      }
       setUser(res.user)
       setProfile(res.user)
       return res.user
